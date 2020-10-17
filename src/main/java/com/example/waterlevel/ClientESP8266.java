@@ -1,42 +1,63 @@
 package com.example.waterlevel;
 
+import android.app.Activity;
 import android.os.AsyncTask;
 
 import java.io.*;
 import java.net.Socket;
 
 
-class ClientESP8266 implements Runnable {
+class ClientESP8266 extends AsyncTask<Void, Void, Void> {
 
-    Socket socket;
-    String ip, exceptionMessage = "Timeout";
-    String responseServer = null;
-    int port;
+    private String ip;
+    private int port;
+    private String exceptionMessage = "Timeout";
+    private String responseServer = null;
+    private MainActivity activity;
+    private boolean isNumber = true;
 
-    ClientESP8266(String ip, int port){
+    ClientESP8266(Activity activity, String ip, int port){
+        this.activity = (MainActivity) activity;
         this.ip = ip;
-        this.port=port;
+        this.port = port;
     }
 
+    @Override
+    protected void onPreExecute() {
+        super.onPreExecute();
+        activity.displayWaitInfo();
+    }
 
     @Override
-    public void run() {
+    protected void onPostExecute(Void aVoid) {
+        super.onPostExecute(aVoid);
 
+        if (exceptionMessage == "Timeout" && responseServer != null) {
+            activity.displayResult(responseServer);
+        } else {
+            activity.displayErrorInfo(exceptionMessage);
+        }
+    }
+
+    @Override
+    protected Void doInBackground(Void... voids) {
         try {
-            socket = new Socket(ip, port);
+            Socket socket = new Socket(ip, port);
 
-            // get response
             BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             responseServer = br.readLine();
 
             br.close();
             socket.close();
+
+            Integer.valueOf(responseServer);
+        } catch (NumberFormatException ex) {
+            exceptionMessage = "Incorrect response form sensor";
+            responseServer = null;
         } catch (Exception e) {
             exceptionMessage = e.getMessage();
-            responseServer = null; }
-    }
-
-    public String getServerResponse(){
-        return this.responseServer;
+            responseServer = null;
+        }
+        return null;
     }
 }
